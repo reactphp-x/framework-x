@@ -228,6 +228,20 @@ class App
     }
 
     /**
+     * Create a route group with a common prefix.
+     *
+     * All routes created in the passed callback will have the given group prefix prepended.
+     *
+     * @param string $prefix
+     * @param array<callable|class-string> $handlers
+     * @param callable $callback
+     */
+    public function group(string $prefix, array $handlers, callable $callback): void
+    {
+        $this->addGroup($prefix, $handlers, $callback);
+    }
+
+    /**
      *
      * @param string[] $methods
      * @param string $route
