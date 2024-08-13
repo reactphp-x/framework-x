@@ -232,13 +232,55 @@ class App
      *
      * All routes created in the passed callback will have the given group prefix prepended.
      *
-     * @param string $prefix
-     * @param array<callable|class-string> $handlers
-     * @param callable $callback
+     * @param string | array $prefix
+     * @param callable|class-string $handler
+     * @param callable|class-string ...$handlers
      */
-    public function group(string $prefix, array $handlers, callable $callback): void
+    public function group(string | array | callable $prefix, ...$handlers): void
     {
-        $this->addGroup($prefix, $handlers, $callback);
+        if (\is_array($prefix)) {
+            $midlleware = $prefix['middleware'] ?? '';
+            if ($midlleware) {
+                $handlers = array_merge((array) $midlleware, $handlers);
+            }
+            $prefix = $prefix['prefix'] ?? '';
+        } else if (\is_callable($prefix)) {
+            $handlers = array_merge([$prefix], $handlers);
+            $prefix = '';
+        }
+
+        $handler = array_pop($handlers);
+        $this->addGroup($prefix, $handlers, $handler);
+
+    }
+
+    /**
+     * Add middleware to the current group.
+     *
+     * @param callable | class-string | array ...$middlewares
+     */
+
+    public function middleware(...$middlewares)
+    {
+        if (count($middlewares) == 1 && \is_array($middlewares[0])) {
+            $middlewares = $middlewares[0];
+        }
+
+       return new class($this, $middlewares) {
+            private $app;
+            private $middlewares;
+
+            public function __construct($app, $middlewares)
+            {
+                $this->app = $app;
+                $this->middlewares = $middlewares;
+            }
+
+            public function group(...$handlers)
+            {
+                $this->app->group(['middleware' => $this->middlewares], fn ($app) => $app->group(...$handlers));
+            }
+        };
     }
 
     /**
