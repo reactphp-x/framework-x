@@ -257,7 +257,7 @@ class App
     /**
      * Add middleware to the current group.
      *
-     * @param callable | class-string | array ...$middlewares
+     * @param callable | class-string | string | array ...$middlewares
      */
 
     public function middleware(...$middlewares)
