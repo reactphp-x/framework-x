@@ -2534,6 +2534,40 @@ class AppTest extends TestCase
         $this->assertEquals("OK fn1, fn2, fn3, fn4, fn6\n", (string) $response->getBody());       
     }
 
+    public function testAtMethod()
+    {
+        $middleware2 = function ($request, $next) {
+            return $next($request->withAttribute('group', 'group'));
+        };
+
+        $class = new class {
+            public function index(ServerRequestInterface $request)
+            {
+                $group = $request->getAttribute('group');
+                assert(is_string($group));
+                return new Response(
+                    200,
+                    [
+                        'Content-Type' => 'text/html'
+                    ],
+                    "OK {$group}\n"
+                );
+            }
+        };
+        $app = $this->createAppWithoutLogger();
+        $app->group('/users', $middleware2, function ($app) use ($class) {
+            $app->get('', get_class($class) . '@index');
+        });
+        $request = new ServerRequest('GET', 'http://localhost/users');
+
+        $response = $app($request);
+        assert($response instanceof ResponseInterface);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('text/html', $response->getHeaderLine('Content-Type'));
+        $this->assertEquals("OK group\n", (string) $response->getBody());
+    }
+
     private function createAppWithoutLogger(callable ...$middleware): App
     {
         return new App(

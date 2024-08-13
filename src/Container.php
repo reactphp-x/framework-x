@@ -65,6 +65,14 @@ class Container
     public function callable(string $class): callable
     {
         return function (ServerRequestInterface $request, callable $next = null) use ($class) {
+            
+            $at = '__invoke';
+            $lastAtPosition = strrpos($class, '@');
+            if ($lastAtPosition !== false && ($_class = substr($class, 0, $lastAtPosition)) && class_exists($_class, true)) {
+                $at = substr($class, $lastAtPosition + 1);
+                $class = $_class;
+            }
+
             // Check `$class` references a valid class name that can be autoloaded
             if (\is_array($this->container) && !\class_exists($class, true) && !interface_exists($class, false) && !trait_exists($class, false)) {
                 throw new \BadMethodCallException('Request handler class ' . $class . ' not found');
@@ -84,18 +92,20 @@ class Container
                 );
             }
 
+            $handler = [$handler, $at];
             // Check `$handler` references a class name that is callable, i.e. has an `__invoke()` method.
             // This initial version is intentionally limited to checking the method name only.
             // A follow-up version will likely use reflection to check request handler argument types.
             if (!is_callable($handler)) {
-                throw new \BadMethodCallException('Request handler class "' . $class . '" has no public __invoke() method');
+                throw new \BadMethodCallException('Request handler class "' . $class . '" has no public ' . $at . '() method');
             }
 
             // invoke request handler as middleware handler or final controller
             if ($next === null) {
-                return $handler($request);
+                return call_user_func($handler, $request);
             }
-            return $handler($request, $next);
+
+            return call_user_func($handler, $request, $next);
         };
     }
 
